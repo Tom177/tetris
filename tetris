@@ -1,0 +1,139 @@
+import pygame
+import random
+
+# 初期設定
+pygame.font.init()
+
+# ゲームウィンドウの設定
+SCREEN_WIDTH = 300
+SCREEN_HEIGHT = 600
+PLAY_WIDTH = 200
+PLAY_HEIGHT = 400
+BLOCK_SIZE = 20
+TOP_LEFT_X = (SCREEN_WIDTH - PLAY_WIDTH) // 2
+TOP_LEFT_Y = SCREEN_HEIGHT - PLAY_HEIGHT - 50
+
+# 色の定義
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+CYAN = (0, 255, 255)
+ORANGE = (255, 165, 0)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+PURPLE = (128, 0, 128)
+TURQUOISE = (64, 224, 208)
+
+# テトリスのブロックの形
+SHAPES = [
+    [[1, 1, 1, 1]],  # I型
+    [[1, 1], [1, 1]],  # O型
+    [[0, 1, 0], [1, 1, 1]],  # T型
+    [[1, 1, 0], [0, 1, 1]],  # S型
+    [[0, 1, 1], [1, 1, 0]],  # Z型
+    [[1, 0, 0], [1, 1, 1]],  # L型
+    [[0, 0, 1], [1, 1, 1]]   # J型
+]
+
+SHAPES_COLORS = [CYAN, YELLOW, PURPLE, GREEN, RED, BLUE, TURQUOISE]
+
+# クラス定義: テトリスのブロック
+class Piece(object):
+    def __init__(self, x, y, shape):
+        self.x = x  # x座標
+        self.y = y  # y座標
+        self.shape = shape  # 形
+        self.color = SHAPES_COLORS[SHAPES.index(shape)]  # 色
+        self.rotation = 0  # 回転状態
+
+    # 回転
+    def rotate(self):
+        self.rotation = (self.rotation + 1) % 4
+        self.shape = SHAPES[SHAPES.index(self.shape)]  # 回転の処理
+
+# クラス定義: ゲームの全体
+class Tetris:
+    def __init__(self):
+        self.board = [[(0, 0, 0) for _ in range(10)] for _ in range(20)]  # ゲームボードの初期化
+        self.gameover = False
+        self.score = 0
+        self.current_piece = None
+        self.next_piece = self.new_piece()
+
+    # 新しいピースの生成
+    def new_piece(self):
+        shape = random.choice(SHAPES)
+        return Piece(5, 0, shape)
+
+    # ボードの表示
+    def draw(self, surface):
+        for y in range(len(self.board)):
+            for x in range(len(self.board[y])):
+                pygame.draw.rect(surface, self.board[y][x], (TOP_LEFT_X + x * BLOCK_SIZE, TOP_LEFT_Y + y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+
+    # ピースを固定する
+    def place_piece(self):
+        for y, row in enumerate(self.current_piece.shape):
+            for x, block in enumerate(row):
+                if block:
+                    self.board[self.current_piece.y + y][self.current_piece.x + x] = self.current_piece.color
+        self.clear_lines()
+
+    # ラインを消去する
+    def clear_lines(self):
+        lines_to_clear = []
+        for i, line in enumerate(self.board):
+            if all(cell != (0, 0, 0) for cell in line):
+                lines_to_clear.append(i)
+
+        for line in lines_to_clear:
+            self.board.pop(line)
+            self.board.insert(0, [(0, 0, 0)] * 10)
+        self.score += len(lines_to_clear)
+
+    # ピースが移動できるか判定する
+    def valid_space(self):
+        for y, row in enumerate(self.current_piece.shape):
+            for x, block in enumerate(row):
+                if block:
+                    if not (0 <= self.current_piece.x + x < 10 and 0 <= self.current_piece.y + y < 20):
+                        return False
+                    if self.board[self.current_piece.y + y][self.current_piece.x + x] != (0, 0, 0):
+                        return False
+        return True
+
+    # ピースを落下させる
+    def drop(self):
+        self.current_piece.y += 1
+        if not self.valid_space():
+            self.current_piece.y -= 1
+            self.place_piece()
+            self.current_piece = self.next_piece
+            self.next_piece = self.new_piece()
+            if not self.valid_space():
+                self.gameover = True
+
+# ゲームを実行する関数
+def main():
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption('Tetris')
+
+    clock = pygame.time.Clock()
+    game = Tetris()
+
+    while not game.gameover:
+        screen.fill((0, 0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game.gameover = True
+
+        game.drop()
+        game.draw(screen)
+        pygame.display.update()
+        clock.tick(10)
+
+    pygame.quit()
+
+if __name__ == '__main__':
+    main()
